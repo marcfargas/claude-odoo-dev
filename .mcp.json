@@ -1,0 +1,19 @@
+{
+    "mcpServers": {
+        "odoo": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@marcfargas/odoo-mcp@latest",
+                "--transport",
+                "stdio"
+            ],
+            "env": {
+                "ODOO_URL": "${ODOO_URL}",
+                "ODOO_DB": "${ODOO_DB}",
+                "ODOO_USER": "${ODOO_USER}",
+                "ODOO_PASSWORD": "${ODOO_PASSWORD}"
+            }
+        }
+    }
+}

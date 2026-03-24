@@ -1,0 +1,50 @@
+name: Sync Skills
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+
+jobs:
+  sync-skills:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get odoo-client version from package.json
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').dependencies['@marcfargas/odoo-client'].replace('^',''))")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout toolbox at matching tag
+        uses: actions/checkout@v4
+        with:
+          repository: marcfargas/odoo-toolbox
+          ref: "@marcfargas/odoo-client@${{ steps.version.outputs.version }}"
+          path: toolbox
+          sparse-checkout: skills/odoo
+
+      - name: Copy skills
+        run: |
+          rm -rf skills/odoo
+          cp -r toolbox/skills/odoo skills/odoo
+          rm -rf toolbox
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add skills/
+          if git diff --cached --quiet; then
+            echo "No skill changes"
+          else
+            git commit -m "chore: sync skills from odoo-toolbox @${{ steps.version.outputs.version }}"
+            git push
+          fi
