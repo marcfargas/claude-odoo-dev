@@ -17,19 +17,32 @@ jobs:
           ref: ${{ github.head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get odoo-client version from package.json
+      - name: Get odoo-client version
         id: version
         run: |
           VERSION=$(node -e "console.log(require('./package.json').dependencies['@marcfargas/odoo-client'].replace('^',''))")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout toolbox at matching tag
-        uses: actions/checkout@v4
-        with:
-          repository: marcfargas/odoo-toolbox
-          ref: "@marcfargas/odoo-client@${{ steps.version.outputs.version }}"
-          path: toolbox
-          sparse-checkout: skills/odoo
+      - name: Fetch skills from toolbox at matching tag
+        run: |
+          TAG="@marcfargas/odoo-client@${{ steps.version.outputs.version }}"
+          echo "Fetching skills from tag: $TAG"
+
+          # Clone with sparse checkout — use git directly to handle @ in tag names
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/marcfargas/odoo-toolbox.git toolbox
+
+          cd toolbox
+          git sparse-checkout set skills/odoo
+
+          # Try to checkout the tag; fall back to default branch if tag doesn't exist yet
+          if git fetch --depth 1 origin "refs/tags/${TAG}:refs/tags/${TAG}" 2>/dev/null; then
+            git checkout "refs/tags/${TAG}"
+            echo "Checked out tag: $TAG"
+          else
+            echo "Tag $TAG not found — using default branch (skills may not match exactly)"
+          fi
+          cd ..
 
       - name: Copy skills
         run: |
